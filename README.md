@@ -758,7 +758,7 @@ The prototype addresses the requested capabilities of:
 
 # Team
 
-Developed by the SIFSentinel team for the Smart India Hackathon.
+Developed by the SenseAI team for the Smart India Hackathon.
 
 ### Tagline
 
