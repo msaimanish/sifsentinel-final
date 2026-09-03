@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg[binary]
+pgvector
+pydantic
+pydantic-settings
+python-dotenv
+pandas
+uvicorn
+python-multipart

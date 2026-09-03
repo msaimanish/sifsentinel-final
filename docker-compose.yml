@@ -1,0 +1,100 @@
+services:
+
+  postgres:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sifsentinel}
+      POSTGRES_USER: ${POSTGRES_USER:-sifsentinel}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sifsentinel}
+
+    ports:
+      - "5433:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-sifsentinel} -d ${POSTGRES_DB:-sifsentinel}"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://sifsentinel:sifsentinel@postgres:5432/sifsentinel}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ./data:/data
+    command:
+      [
+        "uvicorn",
+        "app.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000"
+      ]
+
+
+  frontend:
+    build:
+      context: ./frontend
+
+    restart: unless-stopped
+
+    depends_on:
+      - backend
+
+    ports:
+      - "3000:3000"
+
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+
+
+  ml:
+    build:
+      context: ./ml
+
+    restart: unless-stopped
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://sifsentinel:sifsentinel@postgres:5432/sifsentinel}
+
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-BAAI/bge-base-en-v1.5}
+
+      SIF_MODEL_PATH: ${SIF_MODEL_PATH:-/workspace/models/sif_baseline_v03.joblib}
+
+      PYTHONPATH: /workspace:/workspace/backend
+
+    volumes:
+      - ./ml:/workspace
+      - ./backend:/workspace/backend:ro
+      - ./data:/data
+      - hf_cache:/root/.cache/huggingface
+
+    working_dir: /workspace
+
+
+volumes:
+  postgres_data:
+  hf_cache:

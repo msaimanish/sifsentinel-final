@@ -1,0 +1,10 @@
+pydantic
+pydantic-settings
+pandas
+numpy
+scikit-learn
+joblib
+sentence-transformers
+sqlalchemy
+psycopg[binary]
+pgvector

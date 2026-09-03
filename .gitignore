@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Node
+node_modules/
+.next/
+out/
+
+# Runtime/generated data
+data/incoming/*
+data/processed/*
+
+# Keep runtime directories
+!data/incoming/.gitkeep
+!data/processed/.gitkeep
+
+# Environment files
+.env
+
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Logs
+*.log

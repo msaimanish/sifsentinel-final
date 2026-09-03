@@ -1,0 +1,6 @@
+ID,EventDate,Employer,City,State,Primary NAICS,Hospitalized,Amputation,Loss of Eye,Final Narrative,NatureTitle,EventTitle,SourceTitle,Secondary Source Title,FederalState
+TEST-001,2026-01-15,Alpha Industrial,Denver,CO,332710,0,0,0,"Worker was exposed to an unguarded rotating machine while performing maintenance.","Caught in or compressed by","Caught in running equipment","OSHA","Near Miss",1
+TEST-002,2026-02-10,Beta Construction,Austin,TX,236220,0,0,0,"Worker slipped while walking across a wet floor but avoided serious injury.","Fall on same level","Slip or trip","OSHA","Near Miss",1
+TEST-003,2026-03-05,Gamma Energy,Houston,TX,221210,0,0,0,"Worker entered a restricted area while electrical equipment was being serviced.","Electric shock","Contact with energized equipment","OSHA","Unsafe Condition",1
+TEST-004,2026-03-21,Delta Logistics,Chicago,IL,484110,0,0,0,"Forklift traveled close to a pedestrian worker in an active loading area.","Struck by","Powered industrial truck","OSHA","Near Miss",1
+TEST-005,2026-04-02,Epsilon Fabrication,Phoenix,AZ,332999,0,0,0,"Worker performed welding without the required hot work controls in place.","Burn","Welding operation","OSHA","Unsafe Act",1
