@@ -106,6 +106,7 @@ export default function ReportsPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [downloading, setDownloading] = useState(false);
 
   // ---------------------------------------------------------
   // LOAD REPORTS FROM BACKEND
@@ -217,6 +218,69 @@ export default function ReportsPage() {
     setPage(1);
   }
 
+  async function downloadReports() {
+    try {
+      setDownloading(true);
+
+      const params = new URLSearchParams();
+
+      if (search.trim()) {
+        params.set("search", search.trim());
+      }
+
+      if (riskFilter !== "All") {
+        params.set("risk", riskFilter);
+      }
+
+      if (sifFilter !== "All") {
+        params.set("sif", sifFilter);
+      }
+
+      if (lsrFilter !== "All") {
+        params.set("lsr", lsrFilter);
+      }
+
+      const queryString = params.toString();
+
+      const response = await fetch(
+        `http://localhost:8000/reports/export${
+          queryString ? `?${queryString}` : ""
+        }`,
+        {
+          cache: "no-store",
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to export reports (${response.status})`,
+        );
+      }
+
+      const blob = await response.blob();
+
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "analysed_reports.csv";
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not download reports.",
+      );
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-[#080808] text-white">
       <div className="mx-auto max-w-7xl px-6 py-8 lg:px-8">
@@ -279,12 +343,25 @@ export default function ReportsPage() {
             </p>
           </div>
 
-          <Link
-            href="/upload"
-            className="w-fit rounded-xl bg-white px-4 py-2.5 text-sm font-medium text-black transition hover:bg-zinc-200"
-          >
-            Upload Report
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={downloadReports}
+              disabled={downloading || total === 0}
+              className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-zinc-300 transition hover:bg-white/[0.06] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {downloading
+                ? "Downloading..."
+                : "↓ Download Analysed Reports"}
+            </button>
+
+            <Link
+              href="/upload"
+              className="w-fit rounded-xl bg-white px-4 py-2.5 text-sm font-medium text-black transition hover:bg-zinc-200"
+            >
+              Upload Report
+            </Link>
+          </div>
         </div>
 
         {/* SEARCH + FILTERS */}

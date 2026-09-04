@@ -1,6 +1,9 @@
 from math import ceil
+import csv
+import io
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.orm import Session
 
@@ -215,6 +218,182 @@ def get_reports(
         page_size=page_size,
         total_pages=total_pages,
         reports=results,
+    )
+
+@router.get("/export")
+def export_reports(
+    search: str | None = None,
+    risk: str | None = None,
+    sif: str | None = None,
+    lsr: str | None = None,
+    db: Session = Depends(get_db),
+):
+    """
+    Export all analysed reports as CSV.
+
+    The current search/filter conditions are preserved,
+    but pagination is intentionally ignored.
+    """
+
+    filters = []
+
+    # ---------------------------------------------------------
+    # SEARCH
+    # ---------------------------------------------------------
+
+    if search and search.strip():
+        query = f"%{search.strip()}%"
+
+        filters.append(
+            or_(
+                cast(Report.report_id, String).ilike(query),
+                Report.description.ilike(query),
+                Report.employer.ilike(query),
+                Report.city.ilike(query),
+                Report.state.ilike(query),
+                ReportIntelligence.activity.ilike(query),
+                ReportIntelligence.hazard.ilike(query),
+            )
+        )
+
+    # ---------------------------------------------------------
+    # RISK FILTER
+    # ---------------------------------------------------------
+
+    if risk and risk != "All":
+        filters.append(
+            ReportIntelligence.priority_band == risk
+        )
+
+    # ---------------------------------------------------------
+    # SIF FILTER
+    # ---------------------------------------------------------
+
+    if sif and sif != "All":
+        filters.append(
+            ReportIntelligence.sif_label == sif
+        )
+
+    # ---------------------------------------------------------
+    # LSR FILTER
+    # ---------------------------------------------------------
+
+    if lsr and lsr != "All":
+        filters.append(
+            cast(
+                ReportIntelligence.life_saving_rules,
+                String,
+            ).ilike(f"%{lsr}%")
+        )
+
+    # ---------------------------------------------------------
+    # ONLY ANALYSED REPORTS
+    # ---------------------------------------------------------
+
+    filters.append(
+        ReportIntelligence.report_id.is_not(None)
+    )
+
+    # ---------------------------------------------------------
+    # FETCH ALL ANALYSED REPORTS
+    # ---------------------------------------------------------
+
+    statement = (
+        select(
+            Report.report_id,
+            Report.event_date,
+            Report.employer,
+            Report.city,
+            Report.state,
+            Report.description,
+            ReportIntelligence.sif_probability,
+            ReportIntelligence.sif_label,
+            ReportIntelligence.activity,
+            ReportIntelligence.hazard,
+            ReportIntelligence.life_saving_rules,
+            ReportIntelligence.priority_score,
+            ReportIntelligence.priority_band,
+        )
+        .join(
+            ReportIntelligence,
+            ReportIntelligence.report_id == Report.report_id,
+        )
+        .where(*filters)
+        .order_by(
+            Report.event_date.desc().nullslast(),
+            Report.report_id.desc(),
+        )
+    )
+
+    rows = db.execute(statement).all()
+
+    # ---------------------------------------------------------
+    # BUILD CSV
+    # ---------------------------------------------------------
+
+    output = io.StringIO(newline="")
+    writer = csv.writer(output)
+
+    writer.writerow(
+        [
+            "Report ID",
+            "Event Date",
+            "Employer",
+            "City",
+            "State",
+            "Description",
+            "SIF Probability",
+            "SIF Label",
+            "Activity",
+            "Hazard",
+            "Life-Saving Rules",
+            "Priority Score",
+            "Priority Band",
+        ]
+    )
+
+    for row in rows:
+        rules = row.life_saving_rules
+
+        if isinstance(rules, list):
+            rules_text = "; ".join(str(rule) for rule in rules)
+        else:
+            rules_text = ""
+
+        writer.writerow(
+            [
+                str(row.report_id),
+                row.event_date.isoformat()
+                if row.event_date
+                else "",
+                row.employer or "",
+                row.city or "",
+                row.state or "",
+                row.description or "",
+                row.sif_probability
+                if row.sif_probability is not None
+                else "",
+                row.sif_label or "",
+                row.activity or "",
+                row.hazard or "",
+                rules_text,
+                row.priority_score
+                if row.priority_score is not None
+                else "",
+                row.priority_band or "",
+            ]
+        )
+
+    output.seek(0)
+
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": (
+                'attachment; filename="analysed_reports.csv"'
+            )
+        },
     )
 
 
